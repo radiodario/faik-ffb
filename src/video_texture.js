@@ -1,8 +1,11 @@
 import THREE from 'three';
-
+import CanvasVideoPlayer from './CanvasVideoPlayer';
 const VIDEO_WIDTH = 854;
 const VIDEO_HEIGHT = 480;
 
+const isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
+// Other way to detect iOS
+// var isIOS = /iPad|iPhone|iPod/.test(navigator.platform);
 
 export default function(videoid) {
 
@@ -18,12 +21,24 @@ export default function(videoid) {
   let reflectionMesh;
   let material;
   let materialReflection;
+  let videoObject;
+  let videoPlayer;
+
 
   video = document.getElementById(videoid);
-
   image = document.createElement('canvas');
+  image.id = videoid + '-canvas';
+  document.body.appendChild(image);
+  //video.load();
   image.width = VIDEO_WIDTH;
   image.height = VIDEO_HEIGHT;
+
+  if (isIphone) {
+    videoPlayer = new CanvasVideoPlayer({
+      videoSelector: '#'+videoid,
+      canvasSelector: '#'+videoid+'-canvas'
+    });
+  }
 
   imageContext = image.getContext('2d');
   imageContext.fillStyle = '#000000';
@@ -70,39 +85,47 @@ export default function(videoid) {
   reflectionMesh.position.y = -VIDEO_HEIGHT * 1.5;
   reflectionMesh.rotation.x = - Math.PI;
 
+  videoObject = new THREE.Object3D();
+  videoObject.add(mesh);
+  videoObject.add(reflectionMesh);
 
   return {
     mesh: mesh,
     reflectionMesh: reflectionMesh,
+    videoObject: videoObject,
     video: video,
     // TODO: make mesh and reflectionMesh its own object
     position: function(x, y, z) {
-      mesh.position.x = x;
-      mesh.position.y = y;
-      mesh.position.z = z;
-
-      reflectionMesh.position.x = x;
-      reflectionMesh.position.y = (-VIDEO_HEIGHT * 1.5) + y;
-      reflectionMesh.position.z = z;
+      videoObject.position.x = x;
+      videoObject.position.y = y;
+      videoObject.position.z = z;
     },
     rotate: function(x, y, z) {
-      mesh.rotation.x = x;
-      mesh.rotation.y = y;
-      mesh.rotation.z = z;
-
-      reflectionMesh.rotation.x = x - Math.PI;
-      reflectionMesh.rotation.y = y;
-      reflectionMesh.rotation.z = z;
+      videoObject.rotation.x = x;
+      videoObject.rotation.y = y;
+      videoObject.rotation.z = z;
     },
     play: function() {
-      video.play();
+      if (isIphone) {
+        videoPlayer.play();
+      } else {
+        video.play();
+      }
     },
     stop: function() {
-      video.stop();
+      if (isIphone) {
+        videoPlayer.stop();
+      } else {
+        video.pause();
+        video.currentTime = 0;
+      }
     },
     update: function() {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        imageContext.drawImage(video, 0, 0);
+        // if we are on iphone, canvas player draws to our
+        // canvas automagically
+        if (!isIphone)
+          imageContext.drawImage(video, 0, 0);
         if (texture)
           texture.needsUpdate = true;
         if (textureReflection)

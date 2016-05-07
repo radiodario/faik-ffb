@@ -40,10 +40,8 @@ function init() {
   alex_video.rotate(0, -Math.PI, 0);
   alex_video.position(0, 0, 2);
 
-  scene.add(alex_video.mesh);
-  scene.add(jaq_video.mesh);
-  scene.add(alex_video.reflectionMesh);
-  scene.add(jaq_video.reflectionMesh);
+  scene.add(alex_video.videoObject);
+  scene.add(jaq_video.videoObject);
 
 
   floor = Floor(scene);
