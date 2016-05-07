@@ -41526,6 +41526,279 @@ if (typeof exports !== 'undefined') {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+var cvpHandlers = {
+  canvasClickHandler: null,
+  videoTimeUpdateHandler: null,
+  videoCanPlayHandler: null,
+  windowResizeHandler: null
+};
+
+var CanvasVideoPlayer = function CanvasVideoPlayer(options) {
+  var i;
+
+  this.options = {
+    framesPerSecond: 25,
+    hideVideo: true,
+    autoplay: false,
+    audio: false,
+    timelineSelector: false,
+    resetOnLastFrame: true
+  };
+
+  for (i in options) {
+    this.options[i] = options[i];
+  }
+
+  this.video = document.querySelector(this.options.videoSelector);
+  this.canvas = document.querySelector(this.options.canvasSelector);
+  this.timeline = document.querySelector(this.options.timelineSelector);
+  this.timelinePassed = document.querySelector(this.options.timelineSelector + '> div');
+
+  if (!this.options.videoSelector || !this.video) {
+    console.error('No "videoSelector" property, or the element is not found');
+    return;
+  }
+
+  if (!this.options.canvasSelector || !this.canvas) {
+    console.error('No "canvasSelector" property, or the element is not found');
+    return;
+  }
+
+  if (this.options.timelineSelector && !this.timeline) {
+    console.error('Element for the "timelineSelector" selector not found');
+    return;
+  }
+
+  if (this.options.timelineSelector && !this.timelinePassed) {
+    console.error('Element for the "timelinePassed" not found');
+    return;
+  }
+
+  if (this.options.audio) {
+    if (typeof this.options.audio === 'string') {
+      // Use audio selector from options if specified
+      this.audio = document.querySelectorAll(this.options.audio)[0];
+
+      if (!this.audio) {
+        console.error('Element for the "audio" not found');
+        return;
+      }
+    } else {
+      // Creates audio element which uses same video sources
+      this.audio = document.createElement('audio');
+      this.audio.innerHTML = this.video.innerHTML;
+      this.video.parentNode.insertBefore(this.audio, this.video);
+      this.audio.load();
+    }
+
+    var iOS = /iPad|iPhone|iPod/.test(navigator.platform);
+    if (iOS) {
+      // Autoplay doesn't work with audio on iOS
+      // User have to manually start the audio
+      this.options.autoplay = false;
+    }
+  }
+
+  // Canvas context
+  this.ctx = this.canvas.getContext('2d');
+
+  this.playing = false;
+
+  this.resizeTimeoutReference = false;
+  this.RESIZE_TIMEOUT = 1000;
+
+  this.init();
+  this.bind();
+};
+
+CanvasVideoPlayer.prototype.init = function () {
+  this.video.load();
+
+  this.setCanvasSize();
+
+  if (this.options.hideVideo) {
+    this.video.style.display = 'none';
+  }
+};
+
+// Used most of the jQuery code for the .offset() method
+CanvasVideoPlayer.prototype.getOffset = function (elem) {
+  var docElem, rect, doc;
+
+  if (!elem) {
+    return;
+  }
+
+  rect = elem.getBoundingClientRect();
+
+  // Make sure element is not hidden (display: none) or disconnected
+  if (rect.width || rect.height || elem.getClientRects().length) {
+    doc = elem.ownerDocument;
+    docElem = doc.documentElement;
+
+    return {
+      top: rect.top + window.pageYOffset - docElem.clientTop,
+      left: rect.left + window.pageXOffset - docElem.clientLeft
+    };
+  }
+};
+
+CanvasVideoPlayer.prototype.jumpTo = function (percentage) {
+  this.video.currentTime = this.video.duration * percentage;
+
+  if (this.options.audio) {
+    this.audio.currentTime = this.audio.duration * percentage;
+  }
+};
+
+CanvasVideoPlayer.prototype.bind = function () {
+  var self = this;
+
+  // Playes or pauses video on canvas click
+  this.canvas.addEventListener('click', cvpHandlers.canvasClickHandler = function () {
+    self.playPause();
+  });
+
+  // On every time update draws frame
+  this.video.addEventListener('timeupdate', cvpHandlers.videoTimeUpdateHandler = function () {
+    self.drawFrame();
+    if (self.options.timelineSelector) {
+      self.updateTimeline();
+    }
+  });
+
+  // Draws first frame
+  this.video.addEventListener('canplay', cvpHandlers.videoCanPlayHandler = function () {
+    self.drawFrame();
+  });
+
+  // To be sure 'canplay' event that isn't already fired
+  if (this.video.readyState >= 2) {
+    self.drawFrame();
+  }
+
+  if (self.options.autoplay) {
+    self.play();
+  }
+
+  // Click on the video seek video
+  if (self.options.timelineSelector) {
+    this.timeline.addEventListener('click', function (e) {
+      var offset = e.clientX - self.getOffset(self.canvas).left;
+      var percentage = offset / self.timeline.offsetWidth;
+      self.jumpTo(percentage);
+    });
+  }
+
+  // Cache canvas size on resize (doing it only once in a second)
+  window.addEventListener('resize', cvpHandlers.windowResizeHandler = function () {
+    clearTimeout(self.resizeTimeoutReference);
+
+    self.resizeTimeoutReference = setTimeout(function () {
+      self.setCanvasSize();
+      self.drawFrame();
+    }, self.RESIZE_TIMEOUT);
+  });
+
+  this.unbind = function () {
+    this.canvas.removeEventListener('click', cvpHandlers.canvasClickHandler);
+    this.video.removeEventListener('timeupdate', cvpHandlers.videoTimeUpdateHandler);
+    this.video.removeEventListener('canplay', cvpHandlers.videoCanPlayHandler);
+    window.removeEventListener('resize', cvpHandlers.windowResizeHandler);
+
+    if (this.options.audio) {
+      this.audio.parentNode.removeChild(this.audio);
+    }
+  };
+};
+
+CanvasVideoPlayer.prototype.updateTimeline = function () {
+  var percentage = (this.video.currentTime * 100 / this.video.duration).toFixed(2);
+  this.timelinePassed.style.width = percentage + '%';
+};
+
+CanvasVideoPlayer.prototype.setCanvasSize = function () {
+  this.width = this.canvas.clientWidth;
+  this.height = this.canvas.clientHeight;
+
+  this.canvas.setAttribute('width', this.width);
+  this.canvas.setAttribute('height', this.height);
+};
+
+CanvasVideoPlayer.prototype.play = function () {
+  this.lastTime = Date.now();
+  this.playing = true;
+  this.loop();
+
+  if (this.options.audio) {
+    // Resync audio and video
+    this.audio.currentTime = this.video.currentTime;
+    this.audio.play();
+  }
+};
+
+CanvasVideoPlayer.prototype.pause = function () {
+  this.playing = false;
+
+  if (this.options.audio) {
+    this.audio.pause();
+  }
+};
+
+CanvasVideoPlayer.prototype.playPause = function () {
+  if (this.playing) {
+    this.pause();
+  } else {
+    this.play();
+  }
+};
+
+CanvasVideoPlayer.prototype.loop = function () {
+  var self = this;
+
+  var time = Date.now();
+  var elapsed = (time - this.lastTime) / 1000;
+
+  // Render
+  if (elapsed >= 1 / this.options.framesPerSecond) {
+    this.video.currentTime = this.video.currentTime + elapsed;
+    this.lastTime = time;
+    // Resync audio and video if they drift more than 300ms apart
+    if (this.audio && Math.abs(this.audio.currentTime - this.video.currentTime) > .3) {
+      this.audio.currentTime = this.video.currentTime;
+    }
+  }
+
+  // If we are at the end of the video stop
+  if (this.video.currentTime >= this.video.duration) {
+    this.playing = false;
+
+    if (this.options.resetOnLastFrame === true) {
+      this.video.currentTime = 0;
+    }
+  }
+
+  if (this.playing) {
+    this.animationFrame = requestAnimationFrame(function () {
+      self.loop();
+    });
+  } else {
+    cancelAnimationFrame(this.animationFrame);
+  }
+};
+
+CanvasVideoPlayer.prototype.drawFrame = function () {
+  this.ctx.drawImage(this.video, 0, 0, this.width, this.height);
+};
+
+exports.default = CanvasVideoPlayer;
+
+},{}],3:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 
 exports.default = function (THREE) {
 
@@ -42485,7 +42758,7 @@ exports.default = function (THREE) {
   });
 };
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 'use strict';
 
 var _three = require('three');
@@ -42542,10 +42815,8 @@ function init() {
   alex_video.rotate(0, -Math.PI, 0);
   alex_video.position(0, 0, 2);
 
-  scene.add(alex_video.mesh);
-  scene.add(jaq_video.mesh);
-  scene.add(alex_video.reflectionMesh);
-  scene.add(jaq_video.reflectionMesh);
+  scene.add(alex_video.videoObject);
+  scene.add(jaq_video.videoObject);
 
   floor = (0, _floor2.default)(scene);
 
@@ -42608,7 +42879,7 @@ function animate() {
 init();
 animate();
 
-},{"./OrbitControls":2,"./floor":4,"./video_texture":5,"three":1}],4:[function(require,module,exports){
+},{"./OrbitControls":3,"./floor":5,"./video_texture":6,"three":1}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42656,7 +42927,7 @@ var PI2 = Math.PI * 2;
 var material = void 0,
     particle = void 0;
 
-},{"three":1}],5:[function(require,module,exports){
+},{"three":1}],6:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42677,12 +42948,23 @@ exports.default = function (videoid) {
   var reflectionMesh = void 0;
   var material = void 0;
   var materialReflection = void 0;
+  var videoObject = void 0;
+  var videoPlayer = void 0;
 
   video = document.getElementById(videoid);
-
   image = document.createElement('canvas');
+  image.id = videoid + '-canvas';
+  document.body.appendChild(image);
+  //video.load();
   image.width = VIDEO_WIDTH;
   image.height = VIDEO_HEIGHT;
+
+  if (isIphone) {
+    videoPlayer = new _CanvasVideoPlayer2.default({
+      videoSelector: '#' + videoid,
+      canvasSelector: '#' + videoid + '-canvas'
+    });
+  }
 
   imageContext = image.getContext('2d');
   imageContext.fillStyle = '#000000';
@@ -42729,38 +43011,46 @@ exports.default = function (videoid) {
   reflectionMesh.position.y = -VIDEO_HEIGHT * 1.5;
   reflectionMesh.rotation.x = -Math.PI;
 
+  videoObject = new _three2.default.Object3D();
+  videoObject.add(mesh);
+  videoObject.add(reflectionMesh);
+
   return {
     mesh: mesh,
     reflectionMesh: reflectionMesh,
+    videoObject: videoObject,
     video: video,
     // TODO: make mesh and reflectionMesh its own object
     position: function position(x, y, z) {
-      mesh.position.x = x;
-      mesh.position.y = y;
-      mesh.position.z = z;
-
-      reflectionMesh.position.x = x;
-      reflectionMesh.position.y = -VIDEO_HEIGHT * 1.5 + y;
-      reflectionMesh.position.z = z;
+      videoObject.position.x = x;
+      videoObject.position.y = y;
+      videoObject.position.z = z;
     },
     rotate: function rotate(x, y, z) {
-      mesh.rotation.x = x;
-      mesh.rotation.y = y;
-      mesh.rotation.z = z;
-
-      reflectionMesh.rotation.x = x - Math.PI;
-      reflectionMesh.rotation.y = y;
-      reflectionMesh.rotation.z = z;
+      videoObject.rotation.x = x;
+      videoObject.rotation.y = y;
+      videoObject.rotation.z = z;
     },
     play: function play() {
-      video.play();
+      if (isIphone) {
+        videoPlayer.play();
+      } else {
+        video.play();
+      }
     },
     stop: function stop() {
-      video.stop();
+      if (isIphone) {
+        videoPlayer.stop();
+      } else {
+        video.pause();
+        video.currentTime = 0;
+      }
     },
     update: function update() {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        imageContext.drawImage(video, 0, 0);
+        // if we are on iphone, canvas player draws to our
+        // canvas automagically
+        if (!isIphone) imageContext.drawImage(video, 0, 0);
         if (texture) texture.needsUpdate = true;
         if (textureReflection) textureReflection.needsUpdate = true;
       }
@@ -42776,9 +43066,17 @@ var _three = require('three');
 
 var _three2 = _interopRequireDefault(_three);
 
+var _CanvasVideoPlayer = require('./CanvasVideoPlayer');
+
+var _CanvasVideoPlayer2 = _interopRequireDefault(_CanvasVideoPlayer);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var VIDEO_WIDTH = 854;
 var VIDEO_HEIGHT = 480;
 
-},{"three":1}]},{},[2,3,4,5])
+var isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
+// Other way to detect iOS
+// var isIOS = /iPad|iPhone|iPod/.test(navigator.platform);
+
+},{"./CanvasVideoPlayer":2,"three":1}]},{},[2,3,4,5,6])
