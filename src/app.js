@@ -60,11 +60,9 @@ function init() {
   controls.dampingFactor = 0.25;
   controls.enableZoom = true;
 
-  alex_video.play();
-  jaq_video.play();
   //document.addEventListener('mousemove', onDocumentMouseMove, false);
   window.addEventListener('resize', onWindowResize, false);
-
+  document.body.addEventListener('click', onClick, false);
 }
 
 function onWindowResize() {
@@ -77,6 +75,12 @@ function onWindowResize() {
 
   renderer.setSize( window.innerWidth, window.innerHeight );
 
+}
+
+function onClick() {
+
+  alex_video.play();
+  jaq_video.play();
 }
 
 function onDocumentMouseMove( event ) {
