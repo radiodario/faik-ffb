@@ -2,13 +2,11 @@ import THREE from 'three';
 import CanvasVideoPlayer from './CanvasVideoPlayer';
 const VIDEO_WIDTH = 854;
 const VIDEO_HEIGHT = 480;
-
 const isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
 // Other way to detect iOS
 // var isIOS = /iPad|iPhone|iPod/.test(navigator.platform);
 
-export default function(videoid) {
-
+export default function(videoid, timeOffset=0) {
   let video;
   let image;
   let imageContext;
@@ -106,11 +104,13 @@ export default function(videoid) {
       videoObject.rotation.z = z;
     },
     play: function() {
-      if (isIphone) {
-        videoPlayer.play();
-      } else {
-        video.play();
-      }
+      setTimeout(() => {
+        if (isIphone) {
+          videoPlayer.play();
+        } else {
+          video.play();
+        }
+      }, timeOffset)
     },
     stop: function() {
       if (isIphone) {

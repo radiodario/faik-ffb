@@ -115,6 +115,10 @@ CanvasVideoPlayer.prototype.getOffset = function(elem) {
   }
 };
 
+CanvasVideoPlayer.prototype.jumpToTime = function(timeMs) {
+  this.video.currentTime = timeMs;
+};
+
 CanvasVideoPlayer.prototype.jumpTo = function(percentage) {
   this.video.currentTime = this.video.duration * percentage;
 

@@ -23,6 +23,7 @@
     "babelify": "^7.3.0",
     "browserify": "^3.0.0",
     "orbit-controls": "^1.0.4",
+    "soundcloud": "^3.1.0",
     "three": "^0.76.1"
   },
   "devDependencies": {
