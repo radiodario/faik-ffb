@@ -3,6 +3,9 @@ import OrbitControls from './OrbitControls';
 import VideoTexture from './video_texture';
 import Floor from './floor';
 import SC from 'soundcloud';
+import Column from './column';
+import PeaceSign from './peacesign';
+import Fly from 'three.fly';
 
 OrbitControls(THREE);
 
@@ -15,7 +18,13 @@ let floor;
 let controls;
 let audioPlayer;
 let playing = false;
+let uniforms = {
+  time: { type: "f", value: 1.0 },
+  resolution: { type: "v2", value: new THREE.Vector2() }
+};
 
+let column;
+let peaceSigns = [];
 let alex_video;
 let jaq_video;
 
@@ -37,11 +46,49 @@ function init() {
   scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2( 0xfcccfc, 0.0002);
 
-  alex_video = VideoTexture('alex-video', 1000);
-  jaq_video = VideoTexture('jaq-video', 2500);
+  Column().then((obj) => {
+    column = obj.columnObject;
+    const startx = -4000;
+    const startz = -4000;
+    const separation = 2000;
+    const cols = 5;
+    for (var i = 0; i < 30; i++) {
+      let c = column.clone();
+      let x = i % cols;
+      let z = Math.floor(i/cols);
+      c.position.set(startx + x * separation, -100,  startz + z * separation);
+      scene.add(c);
+    }
+  })
 
-  jaq_video.rotate(0, -Math.PI, 0);
-  jaq_video.position(0, 0, 2);
+  PeaceSign(uniforms).then((obj) => {
+    const startx = -4000;
+    const startz = -4000;
+    const separation = 2000;
+    const cols = 5;
+    obj.peaceSign.scale.set(200, 200, 200);
+    for (var i = 0; i < 30; i++) {
+      let c = obj.peaceSign.clone();
+      let x = i % cols;
+      let z = Math.floor(i/cols);
+      c.position.set(startx + x * separation, 350,  startz + z * separation);
+      scene.add(c);
+      peaceSigns.push(c);
+    }
+  })
+
+  const light = new THREE.DirectionalLight( 0xffffff );
+  light.position.set(0, 0, 1);
+  scene.add( light )
+
+  alex_video = VideoTexture('alex-video', 0);
+  jaq_video = VideoTexture('jaq-video', 0);
+
+  alex_video.position(-1000, 1500, 2);
+
+  //jaq_video.rotate(0, -Math.PI, 0);
+  jaq_video.position(1000, 1500, 2);
+
 
   scene.add(alex_video.videoObject);
   scene.add(jaq_video.videoObject);
@@ -53,6 +100,7 @@ function init() {
   SC.stream('/tracks/245260659', 's-swNZq')
     .then((player) => {
       audioPlayer = player;
+      document.body.addEventListener('click', onClick, false);
     });
 
   floor = Floor(scene);
@@ -64,20 +112,26 @@ function init() {
 
   container.appendChild(renderer.domElement);
 
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.25;
-  controls.enableZoom = true;
+  // controls = new THREE.OrbitControls(camera, renderer.domElement);
+  // controls.enableDamping = true;
+  // controls.dampingFactor = 0.25;
+  // controls.enableZoom = true;
+
+  controls = Fly(camera, renderer.domElement, THREE);
+  controls.movementSpeed = 20;
+  controls.rotationSpeed = 0.5;
 
   //document.addEventListener('mousemove', onDocumentMouseMove, false);
   window.addEventListener('resize', onWindowResize, false);
-  document.body.addEventListener('click', onClick, false);
 }
 
 function onWindowResize() {
 
   windowHalfX = window.innerWidth / 2;
   windowHalfY = window.innerHeight / 2;
+
+  uniforms.resolution.value.x = window.innerWidth;
+  uniforms.resolution.value.y = window.innerHeight;
 
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -88,7 +142,7 @@ function onWindowResize() {
 
 function onClick() {
   if (!playing) {
-    audioPlayer.play();
+    //audioPlayer.play();
     alex_video.play();
     jaq_video.play();
     playing = true;
@@ -106,17 +160,35 @@ function render() {
 
   alex_video.update();
   jaq_video.update();
-
+  floor.update(renderer);
   renderer.render( scene, camera );
 }
 
-function animate() {
+let angle = 0;
+let inc = 0.01;
+let t = 0;
+let yInc = 0;
+let start = null;
 
-  requestAnimationFrame( animate );
-  controls.update();
+function animate(timestamp) {
+  const delta = timestamp - start;
+  uniforms.time.value += 0.01; //delta / 1000;
+  controls.update(1);
   render();
-  //stats.update();
+  t++;
+  yInc = Math.sin(t*0.01);
 
+  for (var i = 0, l = peaceSigns.length; i < l; i++) {
+    peaceSigns[i].rotateY(inc);
+    peaceSigns[i].translateY(yInc);
+    //peaceSigns
+    //peaceSigns[i].lookAt(camera.position);
+  }
+  //stats.update();
+  jaq_video.videoObject.lookAt(camera.position);
+  alex_video.videoObject.lookAt(camera.position);
+  start = timestamp;
+  requestAnimationFrame( animate );
 }
 
 init();

@@ -24,7 +24,9 @@
     "browserify": "^3.0.0",
     "orbit-controls": "^1.0.4",
     "soundcloud": "^3.1.0",
-    "three": "^0.76.1"
+    "three": "^0.76.1",
+    "three-obj-loader": "^1.0.2",
+    "three.fly": "^0.1.6"
   },
   "devDependencies": {
     "grunt": "^0.4.1",
