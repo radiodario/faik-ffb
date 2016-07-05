@@ -1,4 +1,94 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+module.exports = function(subject) {
+  validateSubject(subject);
+
+  var eventsStorage = createEventsStorage(subject);
+  subject.on = eventsStorage.on;
+  subject.off = eventsStorage.off;
+  subject.fire = eventsStorage.fire;
+  return subject;
+};
+
+function createEventsStorage(subject) {
+  // Store all event listeners to this hash. Key is event name, value is array
+  // of callback records.
+  //
+  // A callback record consists of callback function and its optional context:
+  // { 'eventName' => [{callback: function, ctx: object}] }
+  var registeredEvents = Object.create(null);
+
+  return {
+    on: function (eventName, callback, ctx) {
+      if (typeof callback !== 'function') {
+        throw new Error('callback is expected to be a function');
+      }
+      var handlers = registeredEvents[eventName];
+      if (!handlers) {
+        handlers = registeredEvents[eventName] = [];
+      }
+      handlers.push({callback: callback, ctx: ctx});
+
+      return subject;
+    },
+
+    off: function (eventName, callback) {
+      var wantToRemoveAll = (typeof eventName === 'undefined');
+      if (wantToRemoveAll) {
+        // Killing old events storage should be enough in this case:
+        registeredEvents = Object.create(null);
+        return subject;
+      }
+
+      if (registeredEvents[eventName]) {
+        var deleteAllCallbacksForEvent = (typeof callback !== 'function');
+        if (deleteAllCallbacksForEvent) {
+          delete registeredEvents[eventName];
+        } else {
+          var callbacks = registeredEvents[eventName];
+          for (var i = 0; i < callbacks.length; ++i) {
+            if (callbacks[i].callback === callback) {
+              callbacks.splice(i, 1);
+            }
+          }
+        }
+      }
+
+      return subject;
+    },
+
+    fire: function (eventName) {
+      var callbacks = registeredEvents[eventName];
+      if (!callbacks) {
+        return subject;
+      }
+
+      var fireArguments;
+      if (arguments.length > 1) {
+        fireArguments = Array.prototype.splice.call(arguments, 1);
+      }
+      for(var i = 0; i < callbacks.length; ++i) {
+        var callbackInfo = callbacks[i];
+        callbackInfo.callback.apply(callbackInfo.ctx, fireArguments);
+      }
+
+      return subject;
+    }
+  };
+}
+
+function validateSubject(subject) {
+  if (!subject) {
+    throw new Error('Eventify cannot use falsy object as events subject');
+  }
+  var reservedWords = ['on', 'fire', 'off'];
+  for (var i = 0; i < reservedWords.length; ++i) {
+    if (subject.hasOwnProperty(reservedWords[i])) {
+      throw new Error("Subject cannot be eventified, since it already has property '" + reservedWords[i] + "'");
+    }
+  }
+}
+
+},{}],2:[function(require,module,exports){
 !function(t,e){if("object"==typeof exports&&"object"==typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var n=e();for(var i in n)("object"==typeof exports?exports:t)[i]=n[i]}}(this,function(){return function(t){function e(i){if(n[i])return n[i].exports;var r=n[i]={exports:{},id:i,loaded:!1};return t[i].call(r.exports,r,r.exports,e),r.loaded=!0,r.exports}var n={};return e.m=t,e.c=n,e.p="",e(0)}([function(t,e,n){(function(e){"use strict";var i=n(4),r=n(9),o=n(2),s=n(10),a=n(1).Promise,u=n(16),l=n(17);t.exports=e.SC={initialize:function(){var t=arguments.length<=0||void 0===arguments[0]?{}:arguments[0];o.set("oauth_token",t.oauth_token),o.set("client_id",t.client_id),o.set("redirect_uri",t.redirect_uri),o.set("baseURL",t.baseURL),o.set("connectURL",t.connectURL)},get:function(t,e){return i.request("GET",t,e)},post:function(t,e){return i.request("POST",t,e)},put:function(t,e){return i.request("PUT",t,e)},"delete":function(t){return i.request("DELETE",t)},upload:function(t){return i.upload(t)},connect:function(t){return s(t)},isConnected:function(){return void 0!==o.get("oauth_token")},oEmbed:function(t,e){return i.oEmbed(t,e)},resolve:function(t){return i.resolve(t)},Recorder:u,Promise:a,stream:function(t,e){return l(t,e)},connectCallback:function(){r.notifyDialog(this.location)}}}).call(e,function(){return this}())},function(t,e,n){var i;(function(t,r,o,s){/*!
 	 * @overview es6-promise - a tiny implementation of Promises/A+.
 	 * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
@@ -17,7 +107,622 @@ return y}function c(t,e){return t="number"==typeof t||w.test(t)?+t:-1,e=null==e?
 	 * MIT Licensed
 	 */
 var i=t.exports=n(8),r=Array.prototype.slice;i.extend({Deferred:function(t){var e=[["resolve","done",i.Callbacks("once memory"),"resolved"],["reject","fail",i.Callbacks("once memory"),"rejected"],["notify","progress",i.Callbacks("memory")]],n="pending",r={state:function(){return n},always:function(){return o.done(arguments).fail(arguments),this},then:function(){var t=arguments;return i.Deferred(function(n){i.each(e,function(e,r){var s=r[0],a=t[e];o[r[1]](i.isFunction(a)?function(){var t=a.apply(this,arguments);t&&i.isFunction(t.promise)?t.promise().done(n.resolve).fail(n.reject).progress(n.notify):n[s+"With"](this===o?n:this,[t])}:n[s])}),t=null}).promise()},promise:function(t){return null!=t?i.extend(t,r):r}},o={};return r.pipe=r.then,i.each(e,function(t,i){var s=i[2],a=i[3];r[i[1]]=s.add,a&&s.add(function(){n=a},e[1^t][2].disable,e[2][2].lock),o[i[0]]=s.fire,o[i[0]+"With"]=s.fireWith}),r.promise(o),t&&t.call(o,o),o},when:function(t){var e,n,o,s=0,a=r.call(arguments),u=a.length,l=1!==u||t&&i.isFunction(t.promise)?u:0,c=1===l?t:i.Deferred(),h=function(t,n,i){return function(o){n[t]=this,i[t]=arguments.length>1?r.call(arguments):o,i===e?c.notifyWith(n,i):--l||c.resolveWith(n,i)}};if(u>1)for(e=new Array(u),n=new Array(u),o=new Array(u);u>s;s++)a[s]&&i.isFunction(a[s].promise)?a[s].promise().done(h(s,o,a)).fail(c.reject).progress(h(s,n,e)):--l;return l||c.resolveWith(o,a),c.promise()}})},function(t,e,n){function i(t){this.listenTime+=t.from-this.currentTime,this.currentTime=t.to}function r(t){this.listenTime+=t.position-this.currentTime,this.currentTime=t.position}function o(t){this.currentTime=t.position}var s,a=n(1);s=t.exports=function(t){this.scAudio=t,this.listenTime=0,this.currentTime=0,this.scAudio.on(a.SEEK,i,this).on(a.PLAY_START,o,this).on(a.PAUSE,r,this)},s.prototype={constructor:s,getListenTime:function(){return this.listenTime+this.scAudio.currentTime()-this.currentTime}}},function(t,e,n){function i(t){return"AudioPerfMonitor ("+this.scAudio.getId()+") : "+t}function r(){return this.scAudio.controller?this.controller?void this.printWarning(i.call(this,"Setup was called while it was already initialized (returned with a no-op)")):(this.scAudio.options.debug&&window.console.info(i.call(this,"Initialized for instance %s"),this.scAudio.getId()),this.controller=this.scAudio.controller,this.protocol=this.scAudio.streamInfo.protocol,void(this.host=A.getUrlHost(this.scAudio.streamInfo.url))):void this.printWarning("Can´t initialize when controller is null")}function o(){return this.controller?(this.scAudio.options.debug&&window.console.info(i.call(this,"Reset for instance %s"),this.scAudio.getId()),this.controller=null,this.protocol=null,this.host=null,void(this.timeToPlayMeasured=!1)):void this.printWarning(i.call(this,"Reset was called while it was already de-initialized (returned with a no-op)"))}function s(t){var e=this.scAudio.getAudioManagerStates();t===e.LOADING?this.timeToPlayMeasured&&f.call(this):E.isNull(this.bufferingStartTime)||p.call(this)}function a(){this.metadataLoadStartTime=Date.now()}function u(){return E.isNull(this.metadataLoadStartTime)?void this.printWarning(i.call(this,"onMetadataEnd was called without onMetadataStart being called before.")):(this.log({type:"metadata",latency:Date.now()-this.metadataLoadStartTime}),void(this.metadataLoadStartTime=null))}function l(){this.playClickTime=Date.now()}function c(){if(!this.timeToPlayMeasured){if(E.isNull(this.playClickTime))return void this.printWarning(i.call(this,"onPlayResume was called without onPlayStart being called before."));this.log({type:"play",latency:Date.now()-this.playClickTime}),this.playClickTime=null,this.timeToPlayMeasured=!0}}function h(){this.scAudio.isPaused()||(this.seekStartTime=Date.now())}function d(){if(!this.scAudio.isPaused()){if(E.isNull(this.seekStartTime))return void this.printWarning(i.call(this,"onSeekEnd was called without onSeekStart being called before."));this.log({type:"seek",latency:Date.now()-this.seekStartTime}),this.seekStartTime=null}}function f(){this.bufferingStartTime||(this.bufferingStartTime=Date.now())}function p(){return E.isNull(this.bufferingStartTime)?void this.printWarning(i.call(this,"onBufferingEnd was called without onBufferingStart being called before.")):(_.call(this),void(this.bufferingStartTime=null))}function _(){E.isNull(this.bufferingStartTime)||(E.isNull(this.bufferingTimeAccumulated)&&(this.bufferingTimeAccumulated=0),this.bufferingTimeAccumulated+=Date.now()-this.bufferingStartTime)}function g(){_.call(this),E.isNull(this.bufferingTimeAccumulated)||(this.log({type:"buffer",latency:this.bufferingTimeAccumulated}),this.bufferingStartTime=this.bufferingTimeAccumulated=null)}var m,y=n(1),v=n(6),A=n(7),E=n(3);m=t.exports=function(t,e){this.scAudio=t,this.logFn=e,this.controller=null,this.reset(),t.on(y.CREATED,r,this).on(y.RESET,o,this).on(y.DESTROYED,o,this).on(y.SEEK,h,this).on(y.SEEKED,d,this).on(y.PLAY,l,this).on(y.PLAY_START,a,this).on(y.PLAY_RESUME,c,this).on(y.PAUSE,g,this).on(y.FINISH,g,this).on(y.STATE_CHANGE,s,this).on(y.METADATA,u,this)},E.extend(m.prototype,v,{constructor:m,log:function(t){return this.controller?(E.extend(t,{protocol:this.protocol,host:this.host,playertype:this.controller.getType()}),this.scAudio.options.debug&&window.console.info(i.call(this,"%s latency: %d protocol: %s host: %s playertype: %s"),t.type,t.latency,t.protocol,t.host,t.playertype),void this.logFn(t)):void this.printWarning(i.call(this,"Monitor log was called while controller is null (returned with a no-op)"))},reset:function(){this.bufferingStartTime=this.bufferingTimeAccumulated=this.playClickTime=this.seekStartTime=this.metadataLoadStartTime=null,this.timeToPlayMeasured=!1},printWarning:function(t){this.scAudio.options.debug&&window.console.warn(t)}})},function(t,e){var n={AAC:"aac",MP3:"mp3",OGG:"ogg",OPUS:"opus",WAV:"wav"};t.exports=n},function(t,e,n){function i(t){return l.isChrome()&&l.getChromeVersion()>=35&&t.mediaSourceEnabled||l.isSafari()&&l.supportsHLSAudio()}function r(t){return function(e){var n=!1;switch(e){case u.RTMP:n=l.supportsFlash();break;case u.HTTP:n=l.supportsHTML5Audio()||l.supportsFlash();break;case u.HLS:n=i(t)}return n}}function o(t){return(l.isSafari71()||l.isSafari8()||l.isFirefox())&&(t=[u.HTTP,u.HLS,u.RTMP]),t}function s(t){t.protocols=o(t.protocols).filter(r(t))}var a,u=n(2),l=n(5);a={prioritizeAndFilter:s},t.exports=a},function(t,e,n){function i(t,e){if(!t)return!1;var n=t.issuedAt+r(t.protocol,t.duration);return o(t.protocol)?Date.now()+t.duration-(e||0)<n:Date.now()<n}function r(t,e){var n=o(t);return h+(n?l.result(e):0)}function o(t){return t===u.HTTP||t===u.HLS}function s(t,e){function n(t,e){return Math.abs(e-_)-Math.abs(t-_)}function i(t){return-1*t}var r,o,s,a,u,c,h,d,f,p={},_=e.maxBitrate,g=e.protocols,m=e.extensions;for(l.each(t,function(t,e){var n=e.split("_"),i=n[0],r=n[1],o=n[2];p[i]=p[i]||{},p[i][r]=p[i][r]||{},p[i][r][o]=t}),u=0,c=g.length;c>u;++u)for(a=g[u],d=0,f=m.length;f>d;++d)if(h=m[d],p[a]&&p[a][h])return r=Object.keys(p[a][h]).map(Number).sort(i),o=_===1/0,s=_===-(1/0),_=o||s?r[o?"pop":"shift"]():r.sort(n).pop(),{url:p[a][h][_],bitrate:_,protocol:a,extension:h,issuedAt:Date.now(),duration:l.result(e.duration)};return null}var a,u=n(2),l=n(3),c=.9,h=Math.floor(12e4*c);a=t.exports={choosePreferredStream:s,streamValidForPlayingFrom:i},t.exports=a}])},function(t,e){t.exports={encode:function(t,e){function n(t){return t.filter(function(t){return"string"==typeof t&&t.length}).join("&")}function i(t){var e=Object.keys(t);return h?e.sort():e}function r(t,e){var r=":name[:prop]";return n(i(e).map(function(n){return s(r.replace(/:name/,t).replace(/:prop/,n),e[n])}))}function o(t,e){var i=":name[]";return n(e.map(function(e){return s(i.replace(/:name/,t),e)}))}function s(t,e){var n=/%20/g,i=encodeURIComponent,s=typeof e,a=null;return Array.isArray(e)?a=o(t,e):"string"===s?a=i(t)+"="+u(e):"number"===s?a=i(t)+"="+i(e).replace(n,"+"):"boolean"===s?a=i(t)+"="+e:"object"===s&&(null!==e?a=r(t,e):c||(a=i(t)+"=null")),a}function a(t){return"%"+("0"+t.charCodeAt(0).toString(16)).slice(-2).toUpperCase()}function u(t){return t.replace(/[^ !'()~\*]*/g,encodeURIComponent).replace(/ /g,"+").replace(/[!'()~\*]/g,a)}var l="object"==typeof e?e:{},c=l.ignorenull||!1,h=l.sorted||!1;return n(i(t).map(function(e){return s(e,t[e])}))}}},function(t,e){"use strict";t.exports=function(t){return encodeURIComponent(t).replace(/[!'()*]/g,function(t){return"%"+t.charCodeAt(0).toString(16).toUpperCase()})}},function(t,e){t.exports=function(){throw new Error("define cannot be used indirect")}},function(t,e){t.exports=function(t){return t.webpackPolyfill||(t.deprecate=function(){},t.paths=[],t.children=[],t.webpackPolyfill=1),t}},function(t,e){var n=window.URL||window.webkitURL;t.exports=function(t,e){try{try{var i;try{var r=window.BlobBuilder||window.WebKitBlobBuilder||window.MozBlobBuilder||window.MSBlobBuilder;i=new r,i.append(t),i=i.getBlob()}catch(o){i=new Blob([t])}return new Worker(n.createObjectURL(i))}catch(o){return new Worker("data:application/javascript,"+encodeURIComponent(t))}}catch(o){return new Worker(e)}}},function(t,e){}])});
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
+'use strict';
+
+module.exports = function (THREE) {
+
+  /**
+   * @author mrdoob / http://mrdoob.com/
+   */
+  THREE.OBJLoader = function (manager) {
+
+    this.manager = manager !== undefined ? manager : THREE.DefaultLoadingManager;
+  };
+
+  THREE.OBJLoader.prototype = {
+
+    constructor: THREE.OBJLoader,
+
+    load: function load(url, onLoad, onProgress, onError) {
+
+      var scope = this;
+
+      var loader = new THREE.XHRLoader(scope.manager);
+      loader.load(url, function (text) {
+
+        onLoad(scope.parse(text));
+      }, onProgress, onError);
+    },
+
+    parse: function parse(text) {
+
+      console.time('OBJLoader');
+
+      var object,
+          objects = [];
+      var geometry, material;
+
+      function parseVertexIndex(value) {
+
+        var index = parseInt(value);
+
+        return (index >= 0 ? index - 1 : index + vertices.length / 3) * 3;
+      }
+
+      function parseNormalIndex(value) {
+
+        var index = parseInt(value);
+
+        return (index >= 0 ? index - 1 : index + normals.length / 3) * 3;
+      }
+
+      function parseUVIndex(value) {
+
+        var index = parseInt(value);
+
+        return (index >= 0 ? index - 1 : index + uvs.length / 2) * 2;
+      }
+
+      function addVertex(a, b, c) {
+
+        geometry.vertices.push(vertices[a], vertices[a + 1], vertices[a + 2], vertices[b], vertices[b + 1], vertices[b + 2], vertices[c], vertices[c + 1], vertices[c + 2]);
+      }
+
+      function addNormal(a, b, c) {
+
+        geometry.normals.push(normals[a], normals[a + 1], normals[a + 2], normals[b], normals[b + 1], normals[b + 2], normals[c], normals[c + 1], normals[c + 2]);
+      }
+
+      function addUV(a, b, c) {
+
+        geometry.uvs.push(uvs[a], uvs[a + 1], uvs[b], uvs[b + 1], uvs[c], uvs[c + 1]);
+      }
+
+      function addFace(a, b, c, d, ua, ub, uc, ud, na, nb, nc, nd) {
+
+        var ia = parseVertexIndex(a);
+        var ib = parseVertexIndex(b);
+        var ic = parseVertexIndex(c);
+        var id;
+
+        if (d === undefined) {
+
+          addVertex(ia, ib, ic);
+        } else {
+
+          id = parseVertexIndex(d);
+
+          addVertex(ia, ib, id);
+          addVertex(ib, ic, id);
+        }
+
+        if (ua !== undefined) {
+
+          ia = parseUVIndex(ua);
+          ib = parseUVIndex(ub);
+          ic = parseUVIndex(uc);
+
+          if (d === undefined) {
+
+            addUV(ia, ib, ic);
+          } else {
+
+            id = parseUVIndex(ud);
+
+            addUV(ia, ib, id);
+            addUV(ib, ic, id);
+          }
+        }
+
+        if (na !== undefined) {
+
+          ia = parseNormalIndex(na);
+          ib = parseNormalIndex(nb);
+          ic = parseNormalIndex(nc);
+
+          if (d === undefined) {
+
+            addNormal(ia, ib, ic);
+          } else {
+
+            id = parseNormalIndex(nd);
+
+            addNormal(ia, ib, id);
+            addNormal(ib, ic, id);
+          }
+        }
+      }
+
+      // create mesh if no objects in text
+
+      if (/^o /gm.test(text) === false) {
+
+        geometry = {
+          vertices: [],
+          normals: [],
+          uvs: []
+        };
+
+        material = {
+          name: ''
+        };
+
+        object = {
+          name: '',
+          geometry: geometry,
+          material: material
+        };
+
+        objects.push(object);
+      }
+
+      var vertices = [];
+      var normals = [];
+      var uvs = [];
+
+      // v float float float
+
+      var vertex_pattern = /v( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)/;
+
+      // vn float float float
+
+      var normal_pattern = /vn( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)/;
+
+      // vt float float
+
+      var uv_pattern = /vt( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)/;
+
+      // f vertex vertex vertex ...
+
+      var face_pattern1 = /f( +-?\d+)( +-?\d+)( +-?\d+)( +-?\d+)?/;
+
+      // f vertex/uv vertex/uv vertex/uv ...
+
+      var face_pattern2 = /f( +(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+))?/;
+
+      // f vertex/uv/normal vertex/uv/normal vertex/uv/normal ...
+
+      var face_pattern3 = /f( +(-?\d+)\/(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+)\/(-?\d+))?/;
+
+      // f vertex//normal vertex//normal vertex//normal ...
+
+      var face_pattern4 = /f( +(-?\d+)\/\/(-?\d+))( +(-?\d+)\/\/(-?\d+))( +(-?\d+)\/\/(-?\d+))( +(-?\d+)\/\/(-?\d+))?/;
+
+      //
+
+      var lines = text.split('\n');
+
+      for (var i = 0; i < lines.length; i++) {
+
+        var line = lines[i];
+        line = line.trim();
+
+        var result;
+
+        if (line.length === 0 || line.charAt(0) === '#') {
+
+          continue;
+        } else if ((result = vertex_pattern.exec(line)) !== null) {
+
+          // ["v 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
+
+          vertices.push(parseFloat(result[1]), parseFloat(result[2]), parseFloat(result[3]));
+        } else if ((result = normal_pattern.exec(line)) !== null) {
+
+          // ["vn 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
+
+          normals.push(parseFloat(result[1]), parseFloat(result[2]), parseFloat(result[3]));
+        } else if ((result = uv_pattern.exec(line)) !== null) {
+
+          // ["vt 0.1 0.2", "0.1", "0.2"]
+
+          uvs.push(parseFloat(result[1]), parseFloat(result[2]));
+        } else if ((result = face_pattern1.exec(line)) !== null) {
+
+          // ["f 1 2 3", "1", "2", "3", undefined]
+
+          addFace(result[1], result[2], result[3], result[4]);
+        } else if ((result = face_pattern2.exec(line)) !== null) {
+
+          // ["f 1/1 2/2 3/3", " 1/1", "1", "1", " 2/2", "2", "2", " 3/3", "3", "3", undefined, undefined, undefined]
+
+          addFace(result[2], result[5], result[8], result[11], result[3], result[6], result[9], result[12]);
+        } else if ((result = face_pattern3.exec(line)) !== null) {
+
+          // ["f 1/1/1 2/2/2 3/3/3", " 1/1/1", "1", "1", "1", " 2/2/2", "2", "2", "2", " 3/3/3", "3", "3", "3", undefined, undefined, undefined, undefined]
+
+          addFace(result[2], result[6], result[10], result[14], result[3], result[7], result[11], result[15], result[4], result[8], result[12], result[16]);
+        } else if ((result = face_pattern4.exec(line)) !== null) {
+
+          // ["f 1//1 2//2 3//3", " 1//1", "1", "1", " 2//2", "2", "2", " 3//3", "3", "3", undefined, undefined, undefined]
+
+          addFace(result[2], result[5], result[8], result[11], undefined, undefined, undefined, undefined, result[3], result[6], result[9], result[12]);
+        } else if (/^o /.test(line)) {
+
+          geometry = {
+            vertices: [],
+            normals: [],
+            uvs: []
+          };
+
+          material = {
+            name: ''
+          };
+
+          object = {
+            name: line.substring(2).trim(),
+            geometry: geometry,
+            material: material
+          };
+
+          objects.push(object);
+        } else if (/^g /.test(line)) {
+
+          // group
+
+        } else if (/^usemtl /.test(line)) {
+
+            // material
+
+            material.name = line.substring(7).trim();
+          } else if (/^mtllib /.test(line)) {
+
+            // mtl file
+
+          } else if (/^s /.test(line)) {
+
+              // smooth shading
+
+            } else {
+
+                // console.log( "THREE.OBJLoader: Unhandled line " + line );
+
+              }
+      }
+
+      var container = new THREE.Object3D();
+      var l;
+
+      for (i = 0, l = objects.length; i < l; i++) {
+
+        object = objects[i];
+        geometry = object.geometry;
+
+        var buffergeometry = new THREE.BufferGeometry();
+
+        buffergeometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(geometry.vertices), 3));
+
+        if (geometry.normals.length > 0) {
+
+          buffergeometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(geometry.normals), 3));
+        }
+
+        if (geometry.uvs.length > 0) {
+
+          buffergeometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(geometry.uvs), 2));
+        }
+
+        material = new THREE.MeshLambertMaterial({
+          color: 0xff0000
+        });
+        material.name = object.material.name;
+
+        var mesh = new THREE.Mesh(buffergeometry, material);
+        mesh.name = object.name;
+
+        container.add(mesh);
+      }
+
+      console.timeEnd('OBJLoader');
+
+      return container;
+    }
+
+  };
+};
+},{}],4:[function(require,module,exports){
+/**
+ * @author James Baicoianu / http://www.baicoianu.com/
+ * Source: https://github.com/mrdoob/three.js/blob/master/examples/js/controls/FlyControls.js
+ *
+ * Adopted to common js by Andrei Kashcha
+ */
+
+var eventify = require('ngraph.events');
+var createKeyMap = require('./keymap.js');
+
+module.exports = fly;
+
+function fly(camera, domElement, THREE) {
+  domElement = domElement || document;
+  domElement.setAttribute('tabindex', -1);
+
+  var moveState = {
+    up: 0,
+    down: 0,
+    left: 0,
+    right: 0,
+    forward: 0,
+    back: 0,
+    pitchUp: 0,
+    pitchDown: 0,
+    yawLeft: 0,
+    yawRight: 0,
+    rollLeft: 0,
+    rollRight: 0
+  };
+
+
+  var api = {
+    rollSpeed: 0.005,
+    movementSpeed: 1,
+    dragToLook: true,
+    autoForward: false,
+    /**
+     * Requests to update camera position according to the currently pressed
+     * keys/mouse
+     */
+    update: update,
+
+    /**
+     * Returns true if we are moving camera at the moment
+     */
+    isMoving: isMoving,
+
+    /**
+     * Releases all event handlers
+     */
+    destroy: destroy,
+
+    /**
+     * This allows external developers to better control our internal state
+     * Super flexible, yet a bit dangerous
+     */
+    moveState: moveState,
+
+    updateMovementVector: updateMovementVector,
+    updateRotationVector: updateRotationVector,
+
+    /**
+     * Toggles dragToLook setting. When dragToLook is set to false, then
+     * camera always attempts to focus on current mouse position. The only
+     * stable point in the visualization is middle of the screen.
+     */
+    toggleDragToLook: toggleDragToLook
+  };
+
+  eventify(api);
+
+  var tmpQuaternion = new THREE.Quaternion();
+  var isMouseDown = 0;
+  var keyMap = createKeyMap();
+  // we will remember what keys should be releaed in global keyup handler:
+  var pendingKeyUp = Object.create(null);
+
+  var moveVector = new THREE.Vector3(0, 0, 0);
+  var rotationVector = new THREE.Vector3(0, 0, 0);
+
+  var moveArgs = {
+    move: moveVector,
+    rotate: rotationVector
+  };
+
+  // these are local to the scene container. We want to initiate actions only
+  // when we have focus
+  domElement.addEventListener('mousedown', mousedown, false);
+  domElement.addEventListener('keydown', keydown, false);
+
+  // These are global since we can loose control otherwise and miss keyup/move
+  // events.
+  document.addEventListener('mousemove', mousemove, false);
+  document.addEventListener('keyup', keyup, false);
+
+  updateMovementVector();
+  updateRotationVector();
+
+  return api;
+
+  function isMoving() {
+    return moveState.up
+            || moveState.down
+            || moveState.left
+            || moveState.right
+            || moveState.forward
+            || moveState.back
+            || moveState.pitchUp
+            || moveState.pitchDown
+            || moveState.yawLeft
+            || moveState.yawRight
+            || moveState.rollLeft
+            || moveState.rollRight;
+  }
+
+  function toggleDragToLook() {
+    api.dragToLook = !api.dragToLook;
+    api.moveState.yawLeft = 0;
+    api.moveState.pitchDown = 0;
+
+    updateRotationVector();
+
+    return api.dragToLook;
+  }
+
+  function update(delta) {
+    var moveMult = delta * api.movementSpeed;
+    var rotMult = delta * api.rollSpeed;
+
+    camera.translateX(moveVector.x * moveMult);
+    camera.translateY(moveVector.y * moveMult);
+    camera.translateZ(moveVector.z * moveMult);
+
+    tmpQuaternion.set(rotationVector.x * rotMult, rotationVector.y * rotMult, rotationVector.z * rotMult, 1).normalize();
+    camera.quaternion.multiply(tmpQuaternion);
+
+    // expose the rotation vector for convenience
+    camera.rotation.setFromQuaternion(camera.quaternion, camera.rotation.order);
+  }
+
+  function keydown(event) {
+    if (isModifierKey(event)) return;
+
+    var motion = keyMap[event.keyCode];
+    if (motion) {
+      moveState[motion.name] = 1;
+      // we need to make sure that global key up event clears this motion:
+      pendingKeyUp[event.keyCode] = true;
+
+      updateMovementVector();
+      updateRotationVector();
+      api.fire('move', moveArgs);
+    }
+  }
+
+  function isModifierKey(e) {
+    return e.altKey || e.ctrlKey || e.metaKey;
+  }
+
+  function keyup(event) {
+    if (!pendingKeyUp[event.keyCode]) return;
+    pendingKeyUp[event.keyCode] = false;
+    var motion = keyMap[event.keyCode];
+    moveState[motion.name] = 0;
+
+    updateMovementVector();
+    updateRotationVector();
+    api.fire('move', moveArgs);
+  }
+
+  function mousedown(event) {
+    if (domElement !== document) {
+      domElement.focus();
+    }
+
+    document.addEventListener('mouseup', mouseup, false);
+
+    event.preventDefault();
+    //event.stopPropagation();
+
+    if (api.dragToLook) {
+      isMouseDown = true;
+    } else {
+      switch (event.button) {
+        case 0:
+          moveState.forward = 1;
+          break;
+        case 2:
+          moveState.back = 1;
+          break;
+      }
+
+      updateMovementVector();
+    }
+
+    api.fire('move', moveArgs);
+  }
+
+  function mousemove(event) {
+    if (!api.dragToLook || isMouseDown) {
+      var container = getContainerDimensions();
+      var halfWidth = container.size[0] / 2;
+      var halfHeight = container.size[1] / 2;
+
+      moveState.yawLeft = -((event.pageX - container.offset[0]) - halfWidth) / halfWidth;
+      moveState.pitchDown = ((event.pageY - container.offset[1]) - halfHeight) / halfHeight;
+
+      updateRotationVector();
+      api.fire('move', moveArgs);
+    }
+  }
+
+  function mouseup(event) {
+    event.preventDefault();
+
+    if (isMouseDown) {
+      document.removeEventListener('mouseup', mouseup);
+      isMouseDown = false;
+    }
+
+    if (api.dragToLook) {
+      moveState.yawLeft = moveState.pitchDown = 0;
+    } else {
+      switch (event.button) {
+        case 0:
+          moveState.forward = 0;
+          break;
+        case 2:
+          moveState.back = 0;
+          break;
+      }
+      updateMovementVector();
+    }
+
+    updateRotationVector();
+    api.fire('move', moveArgs);
+  }
+
+
+  function updateMovementVector() {
+    var forward = (moveState.forward || (api.autoForward && !moveState.back)) ? 1 : 0;
+
+    moveVector.x = (-moveState.left + moveState.right);
+    moveVector.y = (-moveState.down + moveState.up);
+    moveVector.z = (-forward + moveState.back);
+  }
+
+  function updateRotationVector() {
+    rotationVector.x = (-moveState.pitchDown + moveState.pitchUp);
+    rotationVector.y = (-moveState.yawRight + moveState.yawLeft);
+    rotationVector.z = (-moveState.rollRight + moveState.rollLeft);
+  }
+
+  function getContainerDimensions() {
+    if (domElement !== document) {
+      return {
+        size: [domElement.offsetWidth, domElement.offsetHeight],
+        offset: [domElement.offsetLeft, domElement.offsetTop]
+      };
+    } else {
+      return {
+        size: [window.innerWidth, window.innerHeight],
+        offset: [0, 0]
+      };
+    }
+  }
+
+  function destroy() {
+    document.removeEventListener('mouseup', mouseup);
+    document.removeEventListener('mousemove', mousemove, false);
+    document.removeEventListener('keyup', keyup, false);
+    domElement.removeEventListener('mousedown', mousedown, false);
+    domElement.removeEventListener('keydown', keydown, false);
+  }
+}
+
+},{"./keymap.js":5,"ngraph.events":1}],5:[function(require,module,exports){
+/**
+ * Defines default key bindings for the controls
+ */
+module.exports = createKeyMap;
+
+function createKeyMap() {
+  return {
+    87: { name: 'forward' }, // W
+    83: { name: 'back'}, // S
+    65: { name: 'left'}, // A
+    68: { name: 'right'},// D
+    82: { name: 'up'}, // R
+    70: { name: 'down'}, // F
+    38: { name: 'pitchUp'}, // up
+    40: { name: 'pitchDown'}, // down
+    37: { name: 'yawLeft'}, // left
+    39: { name: 'yawRight'}, // right
+    81: { name: 'rollLeft'}, // Q
+    69: { name: 'rollRight'}, // E
+  };
+}
+
+},{}],6:[function(require,module,exports){
 var self = self || {};// File:src/Three.js
 
 /**
@@ -41539,7 +42244,7 @@ if (typeof exports !== 'undefined') {
   this['THREE'] = THREE;
 }
 
-},{}],3:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41816,7 +42521,7 @@ CanvasVideoPlayer.prototype.drawFrame = function () {
 
 exports.default = CanvasVideoPlayer;
 
-},{}],4:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42781,7 +43486,7 @@ exports.default = function (THREE) {
   });
 };
 
-},{}],5:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 'use strict';
 
 var _three = require('three');
@@ -42804,6 +43509,18 @@ var _soundcloud = require('soundcloud');
 
 var _soundcloud2 = _interopRequireDefault(_soundcloud);
 
+var _column = require('./column');
+
+var _column2 = _interopRequireDefault(_column);
+
+var _peacesign = require('./peacesign');
+
+var _peacesign2 = _interopRequireDefault(_peacesign);
+
+var _three3 = require('three.fly');
+
+var _three4 = _interopRequireDefault(_three3);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 (0, _OrbitControls2.default)(_three2.default);
@@ -42817,7 +43534,13 @@ var floor = void 0;
 var controls = void 0;
 var audioPlayer = void 0;
 var playing = false;
+var uniforms = {
+  time: { type: "f", value: 1.0 },
+  resolution: { type: "v2", value: new _three2.default.Vector2() }
+};
 
+var column = void 0;
+var peaceSigns = [];
 var alex_video = void 0;
 var jaq_video = void 0;
 
@@ -42838,11 +43561,48 @@ function init() {
   scene = new _three2.default.Scene();
   scene.fog = new _three2.default.FogExp2(0xfcccfc, 0.0002);
 
-  alex_video = (0, _video_texture2.default)('alex-video', 1000);
-  jaq_video = (0, _video_texture2.default)('jaq-video', 2500);
+  (0, _column2.default)().then(function (obj) {
+    column = obj.columnObject;
+    var startx = -4000;
+    var startz = -4000;
+    var separation = 2000;
+    var cols = 5;
+    for (var i = 0; i < 30; i++) {
+      var c = column.clone();
+      var x = i % cols;
+      var z = Math.floor(i / cols);
+      c.position.set(startx + x * separation, -100, startz + z * separation);
+      scene.add(c);
+    }
+  });
 
-  jaq_video.rotate(0, -Math.PI, 0);
-  jaq_video.position(0, 0, 2);
+  (0, _peacesign2.default)(uniforms).then(function (obj) {
+    var startx = -4000;
+    var startz = -4000;
+    var separation = 2000;
+    var cols = 5;
+    obj.peaceSign.scale.set(200, 200, 200);
+    for (var i = 0; i < 30; i++) {
+      var c = obj.peaceSign.clone();
+      var x = i % cols;
+      var z = Math.floor(i / cols);
+      c.position.set(startx + x * separation, 350, startz + z * separation);
+      scene.add(c);
+      peaceSigns.push(c);
+    }
+  });
+
+  var light = new _three2.default.DirectionalLight(0xffffff);
+  light.position.set(0, 0, 1);
+  scene.add(light);
+
+  alex_video = (0, _video_texture2.default)('alex-video', 0);
+  jaq_video = (0, _video_texture2.default)('jaq-video', 0);
+
+  alex_video.position(-1000, 1500, 2);
+
+  //jaq_video.rotate(0, -Math.PI, 0);
+  jaq_video.position(1000, 1500, 2);
 
   scene.add(alex_video.videoObject);
   scene.add(jaq_video.videoObject);
@@ -42853,6 +43613,7 @@ function init() {
 
   _soundcloud2.default.stream('/tracks/245260659', 's-swNZq').then(function (player) {
     audioPlayer = player;
+    document.body.addEventListener('click', onClick, false);
   });
 
   floor = (0, _floor2.default)(scene);
@@ -42864,20 +43625,26 @@ function init() {
 
   container.appendChild(renderer.domElement);
 
-  controls = new _three2.default.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.25;
-  controls.enableZoom = true;
+  // controls = new THREE.OrbitControls(camera, renderer.domElement);
+  // controls.enableDamping = true;
+  // controls.dampingFactor = 0.25;
+  // controls.enableZoom = true;
+
+  controls = (0, _three4.default)(camera, renderer.domElement, _three2.default);
+  controls.movementSpeed = 20;
+  controls.rotationSpeed = 0.5;
 
   //document.addEventListener('mousemove', onDocumentMouseMove, false);
   window.addEventListener('resize', onWindowResize, false);
-  document.body.addEventListener('click', onClick, false);
 }
 
 function onWindowResize() {
 
   windowHalfX = window.innerWidth / 2;
   windowHalfY = window.innerHeight / 2;
+
+  uniforms.resolution.value.x = window.innerWidth;
+  uniforms.resolution.value.y = window.innerHeight;
 
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -42887,7 +43654,7 @@ function onWindowResize() {
 
 function onClick() {
   if (!playing) {
-    audioPlayer.play();
+    //audioPlayer.play();
     alex_video.play();
     jaq_video.play();
     playing = true;
@@ -42904,22 +43671,88 @@ function render() {
 
   alex_video.update();
   jaq_video.update();
-
+  floor.update(renderer);
   renderer.render(scene, camera);
 }
 
-function animate() {
+var angle = 0;
+var inc = 0.01;
+var t = 0;
+var yInc = 0;
+var start = null;
 
-  requestAnimationFrame(animate);
-  controls.update();
+function animate(timestamp) {
+  var delta = timestamp - start;
+  uniforms.time.value += 0.01; //delta / 1000;
+  controls.update(1);
   render();
+  t++;
+  yInc = Math.sin(t * 0.01);
+
+  for (var i = 0, l = peaceSigns.length; i < l; i++) {
+    peaceSigns[i].rotateY(inc);
+    peaceSigns[i].translateY(yInc);
+    //peaceSigns
+    //peaceSigns[i].lookAt(camera.position);
+  }
   //stats.update();
+  jaq_video.videoObject.lookAt(camera.position);
+  alex_video.videoObject.lookAt(camera.position);
+  start = timestamp;
+  requestAnimationFrame(animate);
 }
 
 init();
 animate();
 
-},{"./OrbitControls":4,"./floor":6,"./video_texture":7,"soundcloud":1,"three":2}],6:[function(require,module,exports){
+},{"./OrbitControls":8,"./column":10,"./floor":11,"./peacesign":13,"./video_texture":15,"soundcloud":2,"three":6,"three.fly":4}],10:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function () {
+
+  return new Promise(function (resolve, reject) {
+
+    loader.load('textures/column.obj', function (object) {
+      var mat = new _three2.default.MeshLambertMaterial({ color: 0xffffff });
+      object.traverse(function (child) {
+        if (child instanceof _three2.default.Mesh) {
+          child.material = mat;
+        }
+      });
+      resolve({
+        columnObject: object
+      });
+      loaded = true;
+    });
+  });
+};
+
+var _three = require('three');
+
+var _three2 = _interopRequireDefault(_three);
+
+var _threeObjLoader = require('three-obj-loader');
+
+var _threeObjLoader2 = _interopRequireDefault(_threeObjLoader);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+(0, _threeObjLoader2.default)(_three2.default);
+var loader = new _three2.default.OBJLoader();
+
+var manager = new _three2.default.LoadingManager();
+manager.onProgress = function (item, loaded, total) {
+  console.log(item, loaded, total);
+};
+
+var loaded = false;
+var columnObject = void 0;
+
+},{"three":6,"three-obj-loader":3}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42927,27 +43760,176 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 exports.default = function (scene) {
-
-  material = new _three2.default.SpriteMaterial({
-    color: 0x0808080
-
+  mirrorSphereCamera = new _three2.default.CubeCamera(1, 100000, 1024);
+  scene.add(mirrorSphereCamera);
+  material = new _three2.default.MeshBasicMaterial({
+    envMap: mirrorSphereCamera.renderTarget,
+    color: 0xff44CC
   });
-
-  for (var ix = 0; ix < amountx; ix++) {
-
-    for (var iy = 0; iy < amounty; iy++) {
-
-      particle = new _three2.default.Sprite(material);
-      particle.position.x = ix * separation - amountx * separation / 2;
-      particle.position.y = -480 * 0.75;
-      particle.position.z = iy * separation - amounty * separation / 2;
-      particle.scale.x = particle.scale.y = 2;
-      scene.add(particle);
-    }
-  }
-
+  //material = materials.basic();
+  var floorGeom = new _three2.default.PlaneGeometry(20000, 20000, 4, 4);
+  floor = new _three2.default.Mesh(floorGeom, material);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(100, -350, 0);
+  scene.add(floor);
+  //mirrorSphereCamera.rotation.set(floor.rotation.x, floor.rotation.y, floor.rotation.z)
+  mirrorSphereCamera.position.set(floor.position.x, floor.position.y, floor.position.z);
   return {
 
+    update: function update(renderer) {
+      floor.visible = false;
+      mirrorSphereCamera.updateCubeMap(renderer, scene);
+      floor.visible = true;
+    }
+
+  };
+};
+
+var _three = require('three');
+
+var _three2 = _interopRequireDefault(_three);
+
+var _materials = require('./materials');
+
+var _materials2 = _interopRequireDefault(_materials);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var separation = 150;
+var amountx = 10;
+var amounty = 10;
+
+var PI2 = Math.PI * 2;
+var material = void 0,
+    mirrorSphereCamera = void 0,
+    floor = void 0;
+
+},{"./materials":12,"three":6}],12:[function(require,module,exports){
+'use strict';
+
+var _three = require('three');
+
+var _three2 = _interopRequireDefault(_three);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+module.exports = {
+
+  basic: function basic(uniforms, colour) {
+
+    if (!colour) {
+      colour = 0xffffff;
+    }
+
+    return new _three2.default.MeshBasicMaterial({
+      color: colour
+    });
+  },
+
+  lambert: function lambert(uniforms, colour) {
+
+    if (!colour) {
+      colour = 0xffffff;
+    }
+
+    return new _three2.default.MeshLambertMaterial({
+      color: colour,
+      shading: _three2.default.FlatShading
+    });
+  },
+
+  colourBlender: function colourBlender(uniforms) {
+    return new _three2.default.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: document.getElementById('vertex-shader').textContent,
+      fragmentShader: document.getElementById('fragment-shader-1').textContent
+    });
+  },
+
+  spots: function spots(uniforms) {
+    return new _three2.default.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: document.getElementById('vertex-shader').textContent,
+      fragmentShader: document.getElementById('fragment-shader-2').textContent
+    });
+  },
+
+  aliceStripes: function aliceStripes(uniforms) {
+    return new _three2.default.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: document.getElementById('vertex-shader').textContent,
+      fragmentShader: document.getElementById('fragment-shader-3').textContent
+    });
+  }
+
+};
+
+},{"three":6}],13:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (uniforms) {
+
+  return new Promise(function (resolve, reject) {
+
+    loader.load('textures/peace.obj', function (object) {
+      var mat = _materials2.default.colourBlender(uniforms);
+      object.traverse(function (child) {
+        if (child instanceof _three2.default.Mesh) {
+          child.rotation.set(-Math.PI / 2, 0, 0);
+          child.material = mat;
+        }
+      });
+      resolve({
+        peaceSign: object
+      });
+      loaded = true;
+    });
+  });
+};
+
+var _three = require('three');
+
+var _three2 = _interopRequireDefault(_three);
+
+var _threeObjLoader = require('three-obj-loader');
+
+var _threeObjLoader2 = _interopRequireDefault(_threeObjLoader);
+
+var _materials = require('./materials');
+
+var _materials2 = _interopRequireDefault(_materials);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+(0, _threeObjLoader2.default)(_three2.default);
+var loader = new _three2.default.OBJLoader();
+
+var manager = new _three2.default.LoadingManager();
+manager.onProgress = function (item, loaded, total) {
+  console.log(item, loaded, total);
+};
+
+var loaded = false;
+var columnObject = void 0;
+
+},{"./materials":12,"three":6,"three-obj-loader":3}],14:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (camera) {
+
+  var object = new _three2.default.Object();
+
+  var texture = _three2.default.ImageUtils.loadTexture.load('/textures/texture_01.png');
+
+  return {
     update: function update() {}
 
   };
@@ -42959,15 +43941,9 @@ var _three2 = _interopRequireDefault(_three);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var separation = 150;
-var amountx = 10;
-var amounty = 10;
+var loader = new _three2.default.ImageLoader();
 
-var PI2 = Math.PI * 2;
-var material = void 0,
-    particle = void 0;
-
-},{"three":2}],7:[function(require,module,exports){
+},{"three":6}],15:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43121,4 +44097,4 @@ var isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
 // Other way to detect iOS
 // var isIOS = /iPad|iPhone|iPod/.test(navigator.platform);
 
-},{"./CanvasVideoPlayer":3,"three":2}]},{},[3,4,5,6,7])
+},{"./CanvasVideoPlayer":7,"three":6}]},{},[7,8,9,10,11,12,13,14,15])
