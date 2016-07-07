@@ -59,94 +59,97 @@ function init() {
     scene.simulate(undefined, 1);
   })
   scene.fog = new THREE.FogExp2( 0xfcccfc, 0.0002);
+  scene.addEventListener('ready', () => {
 
-  Column().then((obj) => {
-    column = obj.columnObject;
-    const startx = -4000;
-    const startz = -4000;
-    const separation = 2000;
-    const cols = 5;
+    Column().then((obj) => {
+      column = obj.columnObject;
+      const startx = -4000;
+      const startz = -4000;
+      const separation = 2000;
+      const cols = 5;
+      for (var i = 0; i < 30; i++) {
+        let c = column.clone();
+        let x = i % cols;
+        let z = Math.floor(i/cols);
+        c.position.set(startx + x * separation, -100,  startz + z * separation);
+        scene.add(c);
+      }
+    })
+
+    PeaceSign(uniforms).then((obj) => {
+      const startx = -4000;
+      const startz = -4000;
+      const separation = 2000;
+      const cols = 5;
+      obj.peaceSign.scale.set(200, 200, 200);
+      for (var i = 0; i < 30; i++) {
+        let c = obj.peaceSign.clone();
+        let x = i % cols;
+        let z = Math.floor(i/cols);
+        c.position.set(startx + x * separation, 350,  startz + z * separation);
+        scene.add(c);
+        peaceSigns.push(c);
+      }
+    })
+
     for (var i = 0; i < 30; i++) {
-      let c = column.clone();
-      let x = i % cols;
-      let z = Math.floor(i/cols);
-      c.position.set(startx + x * separation, -100,  startz + z * separation);
-      scene.add(c);
+      const fuccboi = Fuccboi(physijs, scene);
+      fuccbois.push(fuccboi);
     }
-  })
 
-  PeaceSign(uniforms).then((obj) => {
-    const startx = -4000;
-    const startz = -4000;
-    const separation = 2000;
-    const cols = 5;
-    obj.peaceSign.scale.set(200, 200, 200);
-    for (var i = 0; i < 30; i++) {
-      let c = obj.peaceSign.clone();
-      let x = i % cols;
-      let z = Math.floor(i/cols);
-      c.position.set(startx + x * separation, 350,  startz + z * separation);
-      scene.add(c);
-      peaceSigns.push(c);
-    }
-  })
+    const light = new THREE.DirectionalLight( 0xffffff );
+    light.position.set(0, 0, 1);
+    scene.add( light )
 
-  for (var i = 0; i < 30; i++) {
-    const fuccboi = Fuccboi(physijs, scene);
-    fuccbois.push(fuccboi);
-  }
+    alex_video = VideoTexture('alex-video', 0);
+    jaq_video = VideoTexture('jaq-video', 0);
 
-  const light = new THREE.DirectionalLight( 0xffffff );
-  light.position.set(0, 0, 1);
-  scene.add( light )
+    alex_video.position(-1000, 1500, 2);
 
-  alex_video = VideoTexture('alex-video', 0);
-  jaq_video = VideoTexture('jaq-video', 0);
-
-  alex_video.position(-1000, 1500, 2);
-
-  //jaq_video.rotate(0, -Math.PI, 0);
-  jaq_video.position(1000, 1500, 2);
+    //jaq_video.rotate(0, -Math.PI, 0);
+    jaq_video.position(1000, 1500, 2);
 
 
-  scene.add(alex_video.videoObject);
-  scene.add(jaq_video.videoObject);
+    scene.add(alex_video.videoObject);
+    scene.add(jaq_video.videoObject);
 
-  SC.initialize({
-    client_id: '9debd6785a41ff5950a3d6b1abad583f'
-  })
+    SC.initialize({
+      client_id: '9debd6785a41ff5950a3d6b1abad583f'
+    })
 
-  SC.stream('/tracks/245260659', 's-swNZq')
+    SC.stream('/tracks/245260659', 's-swNZq')
     .then((player) => {
       audioPlayer = player;
       document.body.addEventListener('click', onClick, false);
     });
 
-  floor = Floor(physijs, scene);
+    floor = Floor(physijs, scene);
 
-  renderer = new THREE.WebGLRenderer(); // why not webgl??
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(scene.fog.color);
-  renderer.setPixelRatio(window.devicePixelRatio);
+    renderer = new THREE.WebGLRenderer(); // why not webgl??
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(scene.fog.color);
+    renderer.setPixelRatio(window.devicePixelRatio);
 
-  container.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
-  if (isIphone) {
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
-    controls.enableZoom = true;
-  } else {
+    if (isIphone) {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.25;
+      controls.enableZoom = true;
+    } else {
 
-    controls = Fly(camera, renderer.domElement, THREE);
-    controls.movementSpeed = 20;
-    controls.rotationSpeed = 0.5;
+      controls = Fly(camera, renderer.domElement, THREE);
+      controls.movementSpeed = 20;
+      controls.rotationSpeed = 0.5;
 
-  }
+    }
 
 
-  //document.addEventListener('mousemove', onDocumentMouseMove, false);
-  window.addEventListener('resize', onWindowResize, false);
+    //document.addEventListener('mousemove', onDocumentMouseMove, false);
+    window.addEventListener('resize', onWindowResize, false);
+    animate();
+  })
 }
 
 function onWindowResize() {
@@ -216,4 +219,3 @@ function animate(timestamp) {
 }
 
 init();
-animate();
