@@ -8,6 +8,7 @@ import PeaceSign from './peacesign';
 import Fly from 'three.fly';
 import Fuccboi from './fuccboi';
 
+const isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
 let physijs = require('whitestormjs-physijs');
 physijs.scripts.worker = '/src/physijs_worker.js';
 physijs.scripts.ammo = '/src/ammo.js';
@@ -55,7 +56,7 @@ function init() {
   });
   scene.setGravity(new THREE.Vector3( 0, -100, 0 ))
   scene.addEventListener('update', () => {
-    scene.simulate(undefined, 0);
+    scene.simulate(undefined, 1);
   })
   scene.fog = new THREE.FogExp2( 0xfcccfc, 0.0002);
 
@@ -130,14 +131,19 @@ function init() {
 
   container.appendChild(renderer.domElement);
 
-  //controls = new THREE.OrbitControls(camera, renderer.domElement);
-  //controls.enableDamping = true;
-  //controls.dampingFactor = 0.25;
-  //controls.enableZoom = true;
+  if (isIphone) {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.enableZoom = true;
+  } else {
 
-  controls = Fly(camera, renderer.domElement, THREE);
-  controls.movementSpeed = 20;
-  controls.rotationSpeed = 0.5;
+    controls = Fly(camera, renderer.domElement, THREE);
+    controls.movementSpeed = 20;
+    controls.rotationSpeed = 0.5;
+
+  }
+
 
   //document.addEventListener('mousemove', onDocumentMouseMove, false);
   window.addEventListener('resize', onWindowResize, false);
