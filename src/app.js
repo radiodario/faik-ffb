@@ -10,8 +10,8 @@ import Fuccboi from './fuccboi';
 
 const isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
 let physijs = require('whitestormjs-physijs');
-physijs.scripts.worker = '/src/physijs_worker.js';
-physijs.scripts.ammo = '/src/ammo.js';
+physijs.scripts.worker = window.location.href + 'src/physijs_worker.js';
+physijs.scripts.ammo = window.location.href + 'src/ammo.js';
 
 
 OrbitControls(THREE);
