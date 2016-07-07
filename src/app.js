@@ -6,6 +6,12 @@ import SC from 'soundcloud';
 import Column from './column';
 import PeaceSign from './peacesign';
 import Fly from 'three.fly';
+import Fuccboi from './fuccboi';
+
+let physijs = require('whitestormjs-physijs');
+physijs.scripts.worker = '/src/physijs_worker.js';
+physijs.scripts.ammo = '/src/ammo.js';
+
 
 OrbitControls(THREE);
 
@@ -25,6 +31,7 @@ let uniforms = {
 
 let column;
 let peaceSigns = [];
+let fuccbois = [];
 let alex_video;
 let jaq_video;
 
@@ -43,7 +50,13 @@ function init() {
 
   camera.position.z = 2000;
 
-  scene = new THREE.Scene();
+  scene = new physijs.Scene({
+    fixedTimeStep: 1/120
+  });
+  scene.setGravity(new THREE.Vector3( 0, -100, 0 ))
+  scene.addEventListener('update', () => {
+    scene.simulate(undefined, 0);
+  })
   scene.fog = new THREE.FogExp2( 0xfcccfc, 0.0002);
 
   Column().then((obj) => {
@@ -77,6 +90,11 @@ function init() {
     }
   })
 
+  for (var i = 0; i < 30; i++) {
+    const fuccboi = Fuccboi(physijs, scene);
+    fuccbois.push(fuccboi);
+  }
+
   const light = new THREE.DirectionalLight( 0xffffff );
   light.position.set(0, 0, 1);
   scene.add( light )
@@ -103,7 +121,7 @@ function init() {
       document.body.addEventListener('click', onClick, false);
     });
 
-  floor = Floor(scene);
+  floor = Floor(physijs, scene);
 
   renderer = new THREE.WebGLRenderer(); // why not webgl??
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -112,10 +130,10 @@ function init() {
 
   container.appendChild(renderer.domElement);
 
-  // controls = new THREE.OrbitControls(camera, renderer.domElement);
-  // controls.enableDamping = true;
-  // controls.dampingFactor = 0.25;
-  // controls.enableZoom = true;
+  //controls = new THREE.OrbitControls(camera, renderer.domElement);
+  //controls.enableDamping = true;
+  //controls.dampingFactor = 0.25;
+  //controls.enableZoom = true;
 
   controls = Fly(camera, renderer.domElement, THREE);
   controls.movementSpeed = 20;
@@ -142,6 +160,7 @@ function onWindowResize() {
 
 function onClick() {
   if (!playing) {
+    scene.simulate();
     //audioPlayer.play();
     alex_video.play();
     jaq_video.play();
@@ -157,7 +176,6 @@ function onDocumentMouseMove( event ) {
 }
 
 function render() {
-
   alex_video.update();
   jaq_video.update();
   floor.update(renderer);

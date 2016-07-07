@@ -26,7 +26,8 @@
     "soundcloud": "^3.1.0",
     "three": "^0.76.1",
     "three-obj-loader": "^1.0.2",
-    "three.fly": "^0.1.6"
+    "three.fly": "^0.1.6",
+    "whitestormjs-physijs": "^1.0.3"
   },
   "devDependencies": {
     "grunt": "^0.4.1",

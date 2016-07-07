@@ -17,14 +17,14 @@ module.exports = function(grunt) {
 
     copy: {
       all: {
-        src: ['*.css', '*.html', 'images/**/*', 'img/**/*', '!Gruntfile.js', 'textures/**/*', 'models/**/*'],
+        src: ['*.css', '*.html', 'images/**/*', 'img/**/*', '!Gruntfile.js', 'textures/**/*', 'models/**/*', 'src/physijs_worker.js', 'src/ammo.js'],
         dest: 'dist/',
       },
     },
 
     browserify: {
       all: {
-        src: 'src/**/*.js',
+        src: ['src/**/*.js', '!src/physijs_worker.js', '!src/ammo.js'],
         dest: 'dist/app.js'
       },
       options: {
