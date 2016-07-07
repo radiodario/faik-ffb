@@ -45005,8 +45005,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var isIphone = navigator.userAgent.indexOf('iPhone') >= 0;
 var physijs = require('whitestormjs-physijs');
-physijs.scripts.worker = '/src/physijs_worker.js';
-physijs.scripts.ammo = '/src/ammo.js';
+physijs.scripts.worker = window.location.href + 'src/physijs_worker.js';
+physijs.scripts.ammo = window.location.href + 'src/ammo.js';
 
 (0, _OrbitControls2.default)(_three2.default);
 
