@@ -45052,90 +45052,93 @@ function init() {
     scene.simulate(undefined, 1);
   });
   scene.fog = new _three2.default.FogExp2(0xfcccfc, 0.0002);
+  scene.addEventListener('ready', function () {
 
-  (0, _column2.default)().then(function (obj) {
-    column = obj.columnObject;
-    var startx = -4000;
-    var startz = -4000;
-    var separation = 2000;
-    var cols = 5;
+    (0, _column2.default)().then(function (obj) {
+      column = obj.columnObject;
+      var startx = -4000;
+      var startz = -4000;
+      var separation = 2000;
+      var cols = 5;
+      for (var i = 0; i < 30; i++) {
+        var c = column.clone();
+        var x = i % cols;
+        var z = Math.floor(i / cols);
+        c.position.set(startx + x * separation, -100, startz + z * separation);
+        scene.add(c);
+      }
+    });
+
+    (0, _peacesign2.default)(uniforms).then(function (obj) {
+      var startx = -4000;
+      var startz = -4000;
+      var separation = 2000;
+      var cols = 5;
+      obj.peaceSign.scale.set(200, 200, 200);
+      for (var i = 0; i < 30; i++) {
+        var c = obj.peaceSign.clone();
+        var x = i % cols;
+        var z = Math.floor(i / cols);
+        c.position.set(startx + x * separation, 350, startz + z * separation);
+        scene.add(c);
+        peaceSigns.push(c);
+      }
+    });
+
     for (var i = 0; i < 30; i++) {
-      var c = column.clone();
-      var x = i % cols;
-      var z = Math.floor(i / cols);
-      c.position.set(startx + x * separation, -100, startz + z * separation);
-      scene.add(c);
+      var fuccboi = (0, _fuccboi2.default)(physijs, scene);
+      fuccbois.push(fuccboi);
     }
-  });
 
-  (0, _peacesign2.default)(uniforms).then(function (obj) {
-    var startx = -4000;
-    var startz = -4000;
-    var separation = 2000;
-    var cols = 5;
-    obj.peaceSign.scale.set(200, 200, 200);
-    for (var i = 0; i < 30; i++) {
-      var c = obj.peaceSign.clone();
-      var x = i % cols;
-      var z = Math.floor(i / cols);
-      c.position.set(startx + x * separation, 350, startz + z * separation);
-      scene.add(c);
-      peaceSigns.push(c);
+    var light = new _three2.default.DirectionalLight(0xffffff);
+    light.position.set(0, 0, 1);
+    scene.add(light);
+
+    alex_video = (0, _video_texture2.default)('alex-video', 0);
+    jaq_video = (0, _video_texture2.default)('jaq-video', 0);
+
+    alex_video.position(-1000, 1500, 2);
+
+    //jaq_video.rotate(0, -Math.PI, 0);
+    jaq_video.position(1000, 1500, 2);
+
+    scene.add(alex_video.videoObject);
+    scene.add(jaq_video.videoObject);
+
+    _soundcloud2.default.initialize({
+      client_id: '9debd6785a41ff5950a3d6b1abad583f'
+    });
+
+    _soundcloud2.default.stream('/tracks/245260659', 's-swNZq').then(function (player) {
+      audioPlayer = player;
+      document.body.addEventListener('click', onClick, false);
+    });
+
+    floor = (0, _floor2.default)(physijs, scene);
+
+    renderer = new _three2.default.WebGLRenderer(); // why not webgl??
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(scene.fog.color);
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    container.appendChild(renderer.domElement);
+
+    if (isIphone) {
+      controls = new _three2.default.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.25;
+      controls.enableZoom = true;
+    } else {
+
+      controls = (0, _three4.default)(camera, renderer.domElement, _three2.default);
+      controls.movementSpeed = 20;
+      controls.rotationSpeed = 0.5;
     }
+
+    //document.addEventListener('mousemove', onDocumentMouseMove, false);
+    window.addEventListener('resize', onWindowResize, false);
+    animate();
   });
-
-  for (var i = 0; i < 30; i++) {
-    var fuccboi = (0, _fuccboi2.default)(physijs, scene);
-    fuccbois.push(fuccboi);
-  }
-
-  var light = new _three2.default.DirectionalLight(0xffffff);
-  light.position.set(0, 0, 1);
-  scene.add(light);
-
-  alex_video = (0, _video_texture2.default)('alex-video', 0);
-  jaq_video = (0, _video_texture2.default)('jaq-video', 0);
-
-  alex_video.position(-1000, 1500, 2);
-
-  //jaq_video.rotate(0, -Math.PI, 0);
-  jaq_video.position(1000, 1500, 2);
-
-  scene.add(alex_video.videoObject);
-  scene.add(jaq_video.videoObject);
-
-  _soundcloud2.default.initialize({
-    client_id: '9debd6785a41ff5950a3d6b1abad583f'
-  });
-
-  _soundcloud2.default.stream('/tracks/245260659', 's-swNZq').then(function (player) {
-    audioPlayer = player;
-    document.body.addEventListener('click', onClick, false);
-  });
-
-  floor = (0, _floor2.default)(physijs, scene);
-
-  renderer = new _three2.default.WebGLRenderer(); // why not webgl??
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(scene.fog.color);
-  renderer.setPixelRatio(window.devicePixelRatio);
-
-  container.appendChild(renderer.domElement);
-
-  if (isIphone) {
-    controls = new _three2.default.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
-    controls.enableZoom = true;
-  } else {
-
-    controls = (0, _three4.default)(camera, renderer.domElement, _three2.default);
-    controls.movementSpeed = 20;
-    controls.rotationSpeed = 0.5;
-  }
-
-  //document.addEventListener('mousemove', onDocumentMouseMove, false);
-  window.addEventListener('resize', onWindowResize, false);
 }
 
 function onWindowResize() {
@@ -45203,7 +45206,6 @@ function animate(timestamp) {
 }
 
 init();
-animate();
 
 },{"./OrbitControls":9,"./column":11,"./floor":12,"./fuccboi":13,"./peacesign":15,"./video_texture":17,"soundcloud":2,"three":6,"three.fly":4,"whitestormjs-physijs":7}],11:[function(require,module,exports){
 'use strict';
